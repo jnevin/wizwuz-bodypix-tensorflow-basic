@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1">
+   <!-- <meta name="viewport" width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0> -->
+
+    <title>BodyPix-TensorFlow-Basic</title>
+
+    <!-- cdn hosted p5 js libs. p5.dom merged into p5 core w v1.0. p5.sound optional. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js"></script> -->
+
+    <!-- Load TensorFlow.js -->
+     <!-- ORIGINAL FOR 2.0 BODYPIX -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2"></script>
+
+    <!-- OTHER TENSORFLOW VERSIONS -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/1.2.1/tf.min.js.map"></script> -->
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0"></script> LATEST VERSION TFJS -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2.1"></script> ML5 VERSION -->
+    <!-- <script src="tf.js"></script> -->
+
+    <!-- LOAD BODYPIX -->
+    <!-- ORIGINAL FOR 2.0 BODYPIX -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0"></script> 
+
+    <!-- OTHER BODYPIX VERSIONS  -->
+    <script src="https://unpkg.com/@tensorflow-models/body-pix@2.0.5/dist/body-pix.min.js"></script>        
+    <script src="https://unpkg.com/@tensorflow-models/body-pix@2.0.5/dist/body-pix.min.js.map"></script>        
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@1.1.2"></script> ML5 VERSION -->
+    <!-- <script src="body-pix.js"></script> -->
+
+    <!-- OLDER BODYPIX LIBS MIS-FUNCTION SAME WAY AS NEW -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.0"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@1.0.0"></script>  -->
+
+        <!-- Load Main App Code -->
+    <script src="sketch.js"></script>
+
+    <!-- Link to your main style sheet-->
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+
+<body>
+    <h1>BodyPix-TensorFlow-Basic</h1>
+    <main>
+        <div id='mainContainer'>
+            <div id='backgroundContainer'><img src='/images/colorbars' width="640" height="480"></div>
+            <!-- <canvas id="liveCanvas" class="p5Canvas" width="640" height="480" style="width: 640px; height: 480px;"></canvas> -->
+        </div>
+    </main>
+</body>
+
+</html>

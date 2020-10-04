@@ -1,0 +1,40 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+/* canvas {
+  display: block;
+} */
+
+#backgroundContainer {
+  /* width: 100vw;
+  height: 100vh; */
+  width: 640;
+  height: 480;
+  background-image: url(../images/colorbars.png);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-color: transparent;
+}
+
+#liveCanvas {
+  position: absolute;
+  /* width: 100vw;
+  height: auto; */
+  width: 640;
+  height: 480;
+  z-index: 9999;
+  margin: auto;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
+  -moz-transform: scale(-1, 1);
+  -webkit-transform: scale(-1, 1);
+  -o-transform: scale(-1, 1);
+  transform: scale(-1, 1);
+  filter: FlipH;
+}
