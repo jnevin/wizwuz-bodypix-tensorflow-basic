@@ -6,8 +6,12 @@ demo of using tensorflow.js and bodypix webcam masked over background video
 // canvases
 let liveCanvas; // to render onscreen graphics
 let bufferCanvas; // to buffer offscreen graphics, can act as a virtual visual layer to draw above canvas
+let contextBuffer;
+let contextPerson;
 const canvasWidth = 640;
 const canvasHeight = 480;
+
+let counter = 0;
 
 // VIDEO
 let webcam = null;
@@ -31,9 +35,10 @@ let camMode = 'VIDEO'; // one of 'VIDEO', 'AUDIO', 'BOTH', or 'CONSTRAINTS'
 
 // AI MODEL
 let model = null; // the pre-trained prediction model
-//let segmentation = null; // result of model prediction for detecting human body and pose
 
-// MODEL CONFIGS
+// BODYPIX MODEL & SEGMENTATION CONFIGS
+
+// 2.0 BodyPix Model Config
 const bodyPixConfig = {
     architecture: 'MobileNetV1', // or ResNet50 requires high speed GPUs, Default: MobileNetV1
     outputStride: 16, //8 or 16. 16 is less output resolution, less accurate but faster, Default: 16
@@ -41,7 +46,7 @@ const bodyPixConfig = {
     quantBytes: 2 // or 2 or 1. 4 is highest accuracy, full model size, but slower. Default: 2
 };
 
-// 2.0 BodyPix
+// 2.0 BodyPix Segmentation Config
 const segmentationConfig = {
     flipHorizontal: true, // true | false. flip camera view. Default: false
     outputStride: 16, //8 or 16. 16 is less output resolution, less accurate but faster, Default: 16
@@ -61,7 +66,7 @@ const segmentationConfig = {
 
 // MASKING
 
-// toMask
+// toMask -- NOT CURRENTLY USED
 const foregroundColor = {
     r: 0,
     g: 0,
@@ -76,7 +81,7 @@ const backgroundColor = {
 };
 const drawContour = false; // draw an outline around the segmented person
 
-// drawMask
+// drawMask -- NOT CURRENTLY USED
 let webcamPersonMask = null;
 let bufferedMaskImage = null;
 const maskOpacity = 1; // opacity when drawing the mask on top of the image
@@ -87,35 +92,35 @@ function preload() {
     //photo = loadImage('images/colorbars.png'); 
 };
 
-// runs once
+// p5 runs once after DOM loaded
 function setup() {
     pixelDensity(1); // turn off auto adjusment for display resolution
     console.log('in setup');
     // noCanvas(); // remove default P5 canvas
 
-    // backgroundContainer = createDiv();
-    // backgroundContainer.id('backgroundContainer');
-    // backgroundContainer.parent('mainContainer');
-
-    //photo.resize(640,480);
-
     // CREATE CANVASSES
-    // Create a canvas that'll be our display
-    // liveCanvas = createCanvas(canvasWidth, canvasHeight, WEBGL);
+
+    // LIVE CANVAS
+    // Create a canvas that will be our display
     liveCanvas = createCanvas(canvasWidth, canvasHeight);
     liveCanvas.id('liveCanvas');
-    // liveCanvas.parent('mainContainer')
-    // liveCanvas = document.getElementById('liveCanvas');
+
+    // livecanvas drawingContext
+    contextPerson = liveCanvas.drawingContext;
+    console.log('contextPerson: ' + contextPerson);
+    contextPerson.imageSmoothingQuality = 'high';
+    contextPerson.imageSmoothingEnabled = true;
     console.log('liveCanvas: ' + liveCanvas);
 
+    // BUFFER CANVAS
     // Create a canvas that'll contain our segmentation
     bufferCanvas = createGraphics(canvasWidth, canvasHeight);
     bufferCanvas.id('bufferCanvas');
-
+    contextBuffer = bufferCanvas.drawingContext;
     //bufferCanvas.drawingContext.scale(0.5, 0.5); // experiment
 
     // set liveCanvas background color for effect
-    //background(255, 255, 0);
+    background(255, 255, 0);
 
     // new entry point
     makeWebCam(camMode)
@@ -131,7 +136,7 @@ function setup() {
             console.log('webcam: ' + webcam);
             console.log('model: ' + model);
 
-            predictImage(webcam, model);
+            predictImages(webcam, model);
 
         })
         .catch((err) => console.error(err));
@@ -139,7 +144,7 @@ function setup() {
 };
 
 // loops after setup (sort of, note asyncs can still be waiting
-function draw() {
+// function draw() {
 
     //photo.mask(image(bufferCanvas,0,0));
     //image(photo,0,0);
@@ -150,7 +155,7 @@ function draw() {
 
     // off-screen buffer is maintained and drawn separately in predictImage()
 
-};
+// };
 
 // CAPTURE LIVE VIDEO
 // promisify createCapture since P5 does only callbacks
@@ -193,91 +198,104 @@ function makeWebCam(captureMode, captureConstraints) {
 };
 
 // analyze webcam video frame to segment the persons
-function predictImage(theCam, theModel) {
-    console.log('in predictImage');
+const predictImages = async function (theCam, theModel) {
+    console.log('in predictImages');
     //return new Promise((resolve, reject) => {
-    segmentation = null;
-    console.log('webcam.loadedmetadata: ' + theCam.loadedmetadata);
+    console.log('theCam.loadedmetadata: ' + theCam.loadedmetadata);
 
     if (theCam.loadedmetadata) {
 
         // PREP FOR SEGMENTATION
         console.log('preparing to segment image');
         const videoFrame = theCam.elt;
+
         console.log('videoFrame: ' + videoFrame);
-        console.log('predictImage theModel: ' + theModel);
-        //const img = document.getElementById("webcam");
+        console.log('predictImages theModel: ' + theModel);
 
-        // DO SEGMENTATION AND PAINT KEYED PERSON(S)
-        theModel.segmentPerson(videoFrame, segmentationConfig)
-        //theModel.estimatePersonSegmentation(videoFrame, 16, 0.6) // RETURNS A PROMISE
-            .then(segmentation => {
-                console.log('finished segmenting');
-                console.log('segmentation: ' + segmentation);
+        const keyedPerson = await getKeyedPersons(videoFrame, theModel);
 
-                if (segmentation != null) {
-                    drawBody(segmentation);
-                    // tfMaskAndDraw(segmentation);
-                }
+        if (keyedPerson.keyed) {
+            counter = counter + 1;
+            console.log('got keyedPerson' + counter + ' :' + keyedPerson.keyed);
+            contextPerson.putImageData(keyedPerson.image, 0, 0);
+            console.log('settimeout now for 20 msecs');
+            setTimeout(delayPredictImages, 20); // delay fixes Safari rendering bug, not sure why!
+            //return await predictImages(theCam, theModel);
+        } else {
+            return;
+        }
 
-                function drawBody(personSegmentation) {
-                    console.log('in drawBody() making transparency');
-                    console.log('type of videoFrame: ' + typeof videoFrame);
-                    contextPerson = liveCanvas.drawingContext;
-                    // contextPerson = liveCanvas.getContext('2d');
-                    contextBuffer = bufferCanvas.drawingContext;
-                    //contextPerson.clearRect(0,0,canvasWidth, canvasHeight);
-                    contextBuffer.drawImage(videoFrame, 0, 0, canvasWidth, canvasHeight); // this is how to produce an ImageData object
-                    //image(videoFrame, 0, 0, canvasWidth, canvasHeight);
-                    let imageData = contextBuffer.getImageData(0, 0, canvasWidth, canvasHeight); // this is how we get the ImageData object
-                    let pixel = imageData.data;
-                    for (let p = 0; p < pixel.length; p += 4) {
-                        if (personSegmentation.data[p / 4] == 0) {
-                            pixel[p + 3] = 0;
-                        }
-                    }
-
-                    //return imageData;
-                    contextPerson.imageSmoothingQuality = 'high';
-                    contextPerson.imageSmoothingEnabled = true;
-                    contextPerson.putImageData(imageData, 0, 0);
-                };
-
-                function tfMaskAndDraw(personSegmentation) {
-
-                    console.log('creating mask');
-                    // create mask
-                    webcamPersonMask = bodyPix.toMask(
-                        personSegmentation,
-                        foregroundColor,
-                        backgroundColor,
-                        drawContour
-                    );
-                    console.log('webcamPersonMask: ' + webcamPersonMask);
-
-                    console.log('drawing to bufferCanvas');
-                    // draw mask into buffer
-                    bufferedMaskImage = bodyPix.drawMask(
-                        bufferCanvas.elt,
-                        // liveCanvas.elt,
-                        videoFrame,
-                        //myImageData,
-                        webcamPersonMask,
-                        maskOpacity,
-                        maskBlurAmount,
-                        flipHorizontal
-                    );
-                    console.log('bufferedMaskImage: ' + bufferedMaskImage);
-
-                    //image(bufferCanvas, -(canvasWidth/2), -(canvasHeight/2)); // if liveCanvas is WEBGL, origin is center and not upper left
-                    image(bufferCanvas, 0, 0);
-                };
-
-                // LOOP TO PREDICT NEXT SEGMENTATION
-                predictImage(theCam, theModel);
-
-            }); // end of THEN
+        async function delayPredictImages() {
+            console.log('just waited 20 msecs, calling predictImages again');
+            return await predictImages(theCam, theModel);
+        }
 
     };
 
+};
+
+// DO SEGMENTATION AND PAINT KEYED PERSON(S)
+const getKeyedPersons = async function (currentVideoFrame, currentModel) {
+    const segmentation = await currentModel.segmentPerson(currentVideoFrame, segmentationConfig);
+
+    console.log('in GetKeyedPersons finished segmenting');
+    console.log('GetKeyedPersons segmentation: ' + segmentation);
+
+    const transparentPerson = await drawTransparentBody(segmentation, currentVideoFrame);
+
+    return {
+        image: transparentPerson,
+        keyed: segmentation ? true : false
+    }
+
+};
+
+// SET KEYED PIXELS TO TRANSPARENT FOR SEGMENTED PERSON IMAGE
+// pixel processing reads / writes to offscreen buffer canvas
+const drawTransparentBody = async function (personSegmentation, nonTransparentVideoFrame) {
+    console.log('in drawTransparentBody() making transparency');
+    console.log('type of nonTransparentVideoFrame: ' + typeof nonTransparentVideoFrame);
+
+    contextBuffer.drawImage(nonTransparentVideoFrame, 0, 0, canvasWidth, canvasHeight); // this is how to produce an ImageData object
+    let imageData = contextBuffer.getImageData(0, 0, canvasWidth, canvasHeight); // this is how we get the ImageData object
+
+    let pixel = imageData.data;
+    for (let p = 0; p < pixel.length; p += 4) {
+        if (personSegmentation.data[p / 4] == 0) {
+            pixel[p + 3] = 0;
+        }
+    }
+
+    return imageData;
+};
+
+// THIS FUNCTION NOT USED, EXAMPLE OF USING BODYPIX UTIL TOMASK AND DRAWMASK
+const bodyPixMaskAndDraw = async function (personSegmentation) {
+
+    console.log('creating mask');
+    // create mask
+    webcamPersonMask = bodyPix.toMask(
+        personSegmentation,
+        foregroundColor,
+        backgroundColor,
+        drawContour
+    );
+    console.log('webcamPersonMask: ' + webcamPersonMask);
+
+    console.log('drawing to bufferCanvas');
+    // draw mask into buffer
+    bufferedMaskImage = bodyPix.drawMask(
+        bufferCanvas.elt,
+        // liveCanvas.elt,
+        videoFrame,
+        //myImageData,
+        webcamPersonMask,
+        maskOpacity,
+        maskBlurAmount,
+        flipHorizontal
+    );
+    console.log('bufferedMaskImage: ' + bufferedMaskImage);
+
+    //image(bufferCanvas, -(canvasWidth/2), -(canvasHeight/2)); // if liveCanvas is WEBGL, origin is center and not upper left
+    image(bufferCanvas, 0, 0);
 };
